@@ -92,7 +92,7 @@ function! OnStdout(chan, msg, name)
 
     let msg = a:msg
 
-    if strlen(s:out_reminder) 
+    if strlen(s:out_reminder)
         let msg[0] = s:out_reminder .. msg[0]
         let s:out_reminder = ''
     endif
@@ -103,7 +103,9 @@ function! OnStdout(chan, msg, name)
         call remove(msg, -1)
     endif
 
-    let msg = map(msg, { _, v -> substitute(v, '\e\[[0-9;]*[a-zA-Z]\|\r', '', 'g')})
+    " Filter out terminal escape code junk
+    let msg = map(msg, { _, v -> substitute(v, '\e\[[0-9;]*[a-zA-Z]\|\e\]8;;.\{-}\|\r', '', 'g')})
+
     call appendbufline(s:bufnr, "$", msg)
 endfunction
 
