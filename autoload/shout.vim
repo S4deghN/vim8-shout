@@ -5,7 +5,7 @@ let s:W_THRESHOLD = 160
 let s:shout_job = 0
 
 let s:bufnr = 0
-let s:follow = 0
+let s:follow = 1
 
 let g:shout_count = 0
 
@@ -104,6 +104,8 @@ function! OnStdout(chan, msg, name)
     endif
 
     " Filter out terminal escape code junk
+    " I don't even know how I came up with this especially the second expression. (at
+    " least I know that each `\|` is an `or` operator.)
     let msg = map(msg, { _, v -> substitute(v, '\e\[[0-9;]*[a-zA-Z]\|\e\]8;;.\{-}\|\r', '', 'g')})
 
     call appendbufline(s:bufnr, "$", msg)
@@ -160,7 +162,7 @@ function! CaptureOutput(command) abort
         normal! G
     endif
 
-    " wincmd p
+     wincmd p
 endfunction
 
 function! OpenFile()
