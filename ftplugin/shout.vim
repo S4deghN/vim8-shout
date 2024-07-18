@@ -12,7 +12,8 @@ setlocal buflisted
 setlocal noswapfile
 setlocal noundofile
 setlocal signcolumn=yes
-setlocal stl=[shout]\ -\ %(%{%expand(t:shout_cmd)%}%)%=\ \ \ \ %-8(%l,%c%)\ %P
+let b:shout_exit_code = 0
+setlocal stl=[shout]\ -\ %(%{%expand(t:shout_cmd)%}%)\ -\ %(%{%expand(b:shout_exit_code)%}%)%=\ \ \ \ %-8(%l,%c%)\ %P
 
 let b:undo_ftplugin = 'setlocal cursorline< cursorlineopt< bufhidden< buftype< buflisted< swapfile< undofile<'
 let b:undo_ftplugin .= '| exe "nunmap <buffer> <CR>"'

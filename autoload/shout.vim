@@ -7,7 +7,7 @@ let s:shout_job = 0
 let s:initial_winid = 0
 
 let s:bufnr = -1
-let s:follow = 1
+let s:follow = 0
 
 let g:shout_count = 0
 
@@ -370,3 +370,7 @@ command! -nargs=0 -bar NextErrorJump call NextErrorJump()
 command! -nargs=0 -bar FirstErrorJump call FirstErrorJump()
 command! -nargs=0 -bar PrevErrorJump call PrevErrorJump()
 command! -nargs=0 -bar LastErrorJump call LastErrorJump()
+
+" TODO: make NextErrorJump and such work even if shout window is not visable
+" TODO: some error output by gcc is missinterpreted as jump point by NextError howeve OpenFile is
+" fine.
