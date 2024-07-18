@@ -1,10 +1,12 @@
 " Define constants
 let s:W_THRESHOLD = 160
+let s:BUFNAME = '[shout]'
 
 " Define global variables
 let s:shout_job = 0
+let s:initial_winid = 0
 
-let s:bufnr = 0
+let s:bufnr = -1
 let s:follow = 1
 
 let g:shout_count = 0
@@ -31,7 +33,7 @@ endfunction
 
 " Function to get the window ID containing '[shout]'
 function! ShoutWinId() abort
-    for shbuf in getbufinfo() -> filter(({_, v -> fnamemodify(v.name, ":t") =~ '^\[shout\]$'}))
+    for shbuf in getbufinfo()->filter(({_, v -> fnamemodify(v.name, ":t") =~ '^\[shout\]$'}))
         if len(shbuf.windows) > 0
             return shbuf.windows[0]
         endif
@@ -39,28 +41,20 @@ function! ShoutWinId() abort
     return -1
 endfunction
 
+function! GetShoutBufnr()
+    let buffers = getbufinfo()->filter(({_, v -> fnamemodify(v.name, ":t") == s:BUFNAME}))
+    if len(buffers) > 0
+        return buffers[0].bufnr
+    else
+        return -1
+    endif
+endfunction
+
 " Function to prepare the buffer for output capture
 function! PrepareBuffer(shell_cwd) abort
-    let bufname = '[shout]'
-    let buffers = getbufinfo()->filter(({_, v -> fnamemodify(v.name, ":t") == bufname}))
-    let bufnr = -1
+    let winid = OpenWindow()
 
-    if len(buffers) > 0
-        let bufnr = buffers[0].bufnr
-    else
-        let bufnr = bufadd(bufname)
-    endif
-
-    let windows = win_findbuf(bufnr)
-    let initial_winid = win_getid()
-
-    if len(windows) == 0
-        exe 'botright ' . Vertical() . ' sbuffer' bufnr
-        let b:shout_initial_winid = initial_winid
-        setl filetype=shout
-    else
-        call win_gotoid(windows[0])
-    endif
+    call win_gotoid(winid)
 
     silent :%d _
 
@@ -69,7 +63,7 @@ function! PrepareBuffer(shell_cwd) abort
 
     setl undolevels=-1
 
-    return bufnr
+    return bufnr()
 endfunction
 
 " function! FilterOutAnsiAndCarriage(list)
@@ -141,9 +135,9 @@ function! CaptureOutput(command) abort
     call setbufline(s:bufnr, 1, '$ ' . a:command)
     call appendbufline(s:bufnr, "$", "")
 
-    " if exists('s:shout_job') && s:shout_job > 0 && jobwait(s:shout_job, 0)[2] == 0
-    "     call jobstop(s:shout_job)
-    " endif
+    if exists('s:shout_job') && s:shout_job > 0
+        call jobstop(s:shout_job)
+    endif
 
     let job_command = has('win32') ? a:command : [&shell, &shellcmdflag, escape(a:command, '\')]
     let s:shout_job = jobstart(job_command, {
@@ -162,7 +156,13 @@ function! CaptureOutput(command) abort
         normal! G
     endif
 
-     wincmd p
+    call win_gotoid(s:initial_winid)
+endfunction
+
+sign define ShoutArrow text=→  texthl=Normal
+function! SignJumpLine()
+    call sign_unplace('Shout', {'id': 1, 'buffer': bufnr()})
+    call sign_place(1, 'Shout', 'ShoutArrow', bufnr(), {'lnum': line('.')})
 endfunction
 
 function! OpenFile()
@@ -218,6 +218,7 @@ function! OpenFile()
     endif
 
     if len(fname) > 0 && filereadable(fname[1])
+        call SignJumpLine()
         try
             let should_split = 0
             let buffers = filter(getbufinfo(), {idx, v -> v.name == fnamemodify(fname[1], ":p")})
@@ -262,33 +263,68 @@ function! Kill()
     endif
 endfunction
 
+function! CloseWindow()
+    let winid = ShoutWinId()
+    if winid == -1
+        return
+    endif
+    let winnr = getwininfo(winid)[0].winnr
+    exe $":{winnr}close"
+endfunction
+
+function! OpenWindow()
+    let bufnr = GetShoutBufnr()
+    if bufnr < 0
+        let bufnr = bufadd(s:BUFNAME)
+    endif
+
+    let windows = win_findbuf(bufnr)
+    let s:initial_winid = win_getid()
+
+    " TODO: instead of this hack of jumping back find a ways to open the window without jumping to it.
+    if len(windows) == 0
+        exe 'botright ' . Vertical() . ' sbuffer' bufnr
+        setl filetype=shout
+        let ret = win_getid()
+        call win_gotoid(s:initial_winid)
+        return ret
+    else
+        return windows[0]
+    endif
+endfunction
+
+function! ShoutToQf()
+    let bufnr = GetShoutBufnr()
+    if bufnr > 0
+        cgetexpr getbufline(bufnr, 1, "$")
+    endif
+endfunction
+
 function! NextError()
     " Search for python error
     let rxError = '^.\{-}:\d\+\(:\d\+:\?\)\?'
     let rxPyError = '^\s*File ".\{-}", line \d\+,'
     let rxErlEscriptError = '^\s\+in function\s\+.\{-}(.\{-}, line \d\+)'
-    call search('\v('.rxError.')|('.rxPyError.')|('.rxErlEscriptError.')', 'W')
+    call search($'\({rxError}\)\|\({rxPyError}\)\|\({rxErlEscriptError}\)', 'W')
 endfunction
 
 function! FirstError()
+    " same as `:2`
     execute "2"
     call NextError()
 endfunction
 
-function! PrevError(accept_at_curpos)
+function! PrevError()
     let rxError = '^.\{-}:\d\+\(:\d\+:\?\)\?'
     let rxPyError = '^\s*File ".\{-}", line \d\+,'
     let rxErlEscriptError = '^\s\+in function\s\+.\{-}(.\{-}, line \d\+)'
-    call search('\v('.rxError.')|('.rxPyError.')|('.rxErlEscriptError.')', 'bW')
+    call search($'\({rxError}\)\|\({rxPyError}\)\|\({rxErlEscriptError}\)', 'bW')
 endfunction
 
 function! LastError()
+    " same as `:$`
     execute "$"
-    if getline("$") =~ "^Exit code: .*$"
-        call PrevError()
-    else
-        call PrevError(1)
-    endif
+    call PrevError()
 endfunction
 
 function! NextErrorJump()
@@ -318,15 +354,17 @@ endfunction
 " Define other required functions similarly as per the Vim9 script
 
 " Exported functions
-" command! -nargs=1 -complete=shellcmd -bar CaptureOutput call CaptureOutput(<f-args>, v:true)
-
+"command! -nargs=1 -complete=shellcmd -bar CaptureOutput call CaptureOutput(<f-args>)
 command! -nargs=1 -bang -complete=file Sh call CaptureOutput(<f-args>)
 
+command! -nargs=0 -bar ShoutToQf call ShoutToQf()
+command! -nargs=0 -bar Shut call CloseWindow()
+command! -nargs=0 -bar NotShut call OpenWindow()
 command! -nargs=0 -bar OpenFile call OpenFile()
 command! -nargs=0 -bar Kill call Kill()
 command! -nargs=0 -bar NextError call NextError()
 command! -nargs=0 -bar FirstError call FirstError()
-command! -nargs=? -bar PrevError call PrevError(<q-args>)
+command! -nargs=0 -bar PrevError call PrevError()
 command! -nargs=0 -bar LastError call LastError()
 command! -nargs=0 -bar NextErrorJump call NextErrorJump()
 command! -nargs=0 -bar FirstErrorJump call FirstErrorJump()

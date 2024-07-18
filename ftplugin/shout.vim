@@ -11,6 +11,7 @@ setlocal buftype=nofile
 setlocal buflisted
 setlocal noswapfile
 setlocal noundofile
+setlocal signcolumn=yes
 
 let b:undo_ftplugin = 'setlocal cursorline< cursorlineopt< bufhidden< buftype< buflisted< swapfile< undofile<'
 let b:undo_ftplugin .= '| exe "nunmap <buffer> <CR>"'
