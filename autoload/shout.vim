@@ -7,7 +7,7 @@ let s:shout_job = 0
 let s:initial_winid = 0
 
 let s:bufnr = -1
-let s:follow = 0
+let s:follow = 1
 
 let g:shout_count = 0
 
@@ -103,6 +103,9 @@ function! OnStdout(chan, msg, name)
     let msg = map(msg, { _, v -> substitute(v, '\e\[[0-9;]*[a-zA-Z]\|\e\]8;;.\{-}\|\r', '', 'g')})
 
     call appendbufline(s:bufnr, "$", msg)
+    if s:follow
+        call win_execute(bufwinid(s:bufnr), "normal! G")
+    endif
 endfunction
 
 function! OnExit(chan, exit_code, event_type) abort
@@ -258,8 +261,8 @@ function! OpenFile()
 endfunction
 
 function! Kill()
-    if exists('shout_job') && shout_job != 0
-        call job_stop(shout_job)
+    if exists('s:shout_job') && s:shout_job != 0
+        call jobstop(s:shout_job)
     endif
 endfunction
 
