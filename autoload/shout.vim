@@ -50,11 +50,53 @@ function! GetShoutBufnr()
     endif
 endfunction
 
+function! UseVertSplitOrCreate()
+    let current_win_pos = win_screenpos(0)
+    " numbers: [row, col].  The first window always has position
+    " [1, 1], unless there is a tabline, then it is [2, 1].
+    if current_win_pos[1] == 1 " this mean we are on left split window
+        " check if a split on right already exists
+        let right_winnr = winnr('1l')
+        if right_winnr != winnr()
+            return win_getid(right_winnr)
+        else
+            :botright vsplit
+            :wincmd p
+            return win_getid(winnr('#'))
+        endif
+    else " this mean we on right split window
+        " check if a split on left already exists
+        let left_winnr = winnr('1h')
+        if left_winnr != winnr()
+            return win_getid(left_winnr)
+        else
+            :echomsg "we should not have reached here!"
+            :botright vsplit
+            :wincmd p
+            return win_getid(winnr('#'))
+        endif
+    endif
+endfunction
+
 " Function to prepare the buffer for output capture
 function! PrepareBuffer(shell_cwd) abort
-    let winid = OpenWindow()
+    "let winid = OpenWindow()
 
-    call win_gotoid(winid)
+    let s:initial_winid = win_getid()
+
+    let bufnr = GetShoutBufnr()
+    let windows = win_findbuf(bufnr)
+    if len(windows) == 0 " ensure a shout window is not open already
+        let winid = UseVertSplitOrCreate()
+        call win_gotoid(winid)
+        if bufnr < 0
+            let bufnr = bufadd(s:BUFNAME)
+        endif
+        :exec "buffer" .. bufnr
+        setl filetype=shout
+    else
+        call win_gotoid(windows[0])
+    endif
 
     silent :%d _
 
