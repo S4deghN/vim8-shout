@@ -50,28 +50,27 @@ function! GetShoutBufnr()
     endif
 endfunction
 
-function! UseVertSplitOrCreate()
+function! UseSplitOrCreate()
     let current_win_pos = win_screenpos(0)
-    " numbers: [row, col].  The first window always has position
-    " [1, 1], unless there is a tabline, then it is [2, 1].
-    if current_win_pos[1] == 1 " this mean we are on left split window
-        " check if a split on right already exists
-        let right_winnr = winnr('1l')
-        if right_winnr != winnr()
-            return win_getid(right_winnr)
+    let winnr = winnr()
+
+    if &columns > 160
+        if winnr != winnr('1l')
+            return win_getid(winnr('1l'))
+        elseif winnr != winnr('1h')
+            return win_getid(winnr('1h'))
         else
             :botright vsplit
             :wincmd p
             return win_getid(winnr('#'))
         endif
-    else " this mean we on right split window
-        " check if a split on left already exists
-        let left_winnr = winnr('1h')
-        if left_winnr != winnr()
-            return win_getid(left_winnr)
+    else
+        if winnr != winnr('1j')
+            return win_getid(winnr('1j'))
+        elseif winnr != winnr('1k')
+            return win_getid(winnr('1k'))
         else
-            :echomsg "we should not have reached here!"
-            :botright vsplit
+            :botright split
             :wincmd p
             return win_getid(winnr('#'))
         endif
@@ -86,8 +85,10 @@ function! PrepareBuffer(shell_cwd) abort
 
     let bufnr = GetShoutBufnr()
     let windows = win_findbuf(bufnr)
-    if len(windows) == 0 " ensure a shout window is not open already
-        let winid = UseVertSplitOrCreate()
+
+    let shout_window_exist = len(windows)
+    if !shout_window_exist
+        let winid = UseSplitOrCreate()
         call win_gotoid(winid)
         if bufnr < 0
             let bufnr = bufadd(s:BUFNAME)
