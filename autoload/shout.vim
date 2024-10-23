@@ -269,33 +269,27 @@ function! OpenFile()
             let should_split = 0
             let buffers = filter(getbufinfo(), {idx, v -> v.name == fnamemodify(fname[1], ":p")})
             let fname[1] = substitute(fname[1], '#', '\&', 'g')
+
             " goto opened file if it is visible
-            if len(buffers) > 0 && len(buffers[0].windows) > 0
-                call win_gotoid(buffers[0].windows[0])
-            " goto first non shout window otherwise
-            elseif win_gotoid(FindOtherWin())
-                if !&hidden && &modified
-                    let should_split = 1
+            if len(buffers) > 0
+                if len(buffers[0].windows) > 0
+                    call win_gotoid(buffers[0].windows[0])
+                else
+                    call win_gotoid(UseSplitOrCreate())
+                    execute "buffer" fname[1]
                 endif
             else
-                let should_split = 1
-            endif
-
-            execute "lcd ".shout_cwd
-
-            if should_split
-                execute "Vertical" "split" fname[1]
-            else
+                call win_gotoid(UseSplitOrCreate())
                 execute "edit" fname[1]
             endif
 
             if !empty(fname[2])
-                execute ":".fname[2]
+                execute ":" .. fname[2]
                 execute "normal! 0"
             endif
 
             if !empty(fname[3]) && str2nr(fname[3]) > 1
-                execute "normal! ".(str2nr(fname[3]) - 1)."l"
+                execute "normal! " .. (str2nr(fname[3])) .. "|"
             endif
             normal! zz
         catch

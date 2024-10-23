@@ -39,8 +39,8 @@ syntax match shoutLogWarn  "\<\(WARN\|warn\|warning\)\>"
 syntax match shoutLogError "\<\(ERROR\|error\)\>"
 
 hi link shoutLogInfo String
-hi link shoutLogWarn Constant
-hi link shoutLogError Statement
+hi link shoutLogWarn WarningMsg
+hi link shoutLogError ErrorMsg
 hi link ShoutLogDebug Comment
 
 hi link shoutCmdPrompt Statement
