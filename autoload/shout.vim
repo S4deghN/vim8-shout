@@ -1,6 +1,7 @@
 " Define constants
 let s:W_THRESHOLD = 160
-let s:BUFNAME = '[shout]'
+let s:bufname = '[shout]'
+let s:alt_filetype = ''
 
 " Define global variables
 let s:shout_job = 0
@@ -42,7 +43,7 @@ function! ShoutWinId() abort
 endfunction
 
 function! GetShoutBufnr()
-    let buffers = getbufinfo()->filter(({_, v -> fnamemodify(v.name, ":t") == s:BUFNAME}))
+    let buffers = getbufinfo()->filter(({_, v -> fnamemodify(v.name, ":t") == s:bufname}))
     if len(buffers) > 0
         return buffers[0].bufnr
     else
@@ -87,19 +88,22 @@ function! PrepareBuffer(shell_cwd) abort
     let windows = win_findbuf(bufnr)
 
     let shout_window_exist = len(windows)
-    if !shout_window_exist
+    if shout_window_exist
+        call win_gotoid(windows[0])
+    else
         let winid = UseSplitOrCreate()
         call win_gotoid(winid)
         if bufnr < 0
-            let bufnr = bufadd(s:BUFNAME)
+            let bufnr = bufadd(s:bufname)
         endif
         :exec "buffer" .. bufnr
         setl filetype=shout
-    else
-        call win_gotoid(windows[0])
     endif
 
     silent :%d _
+    " or. because a buftype=nofile is emptied with this command
+    " but it causes weird syntax highlihgt bug!
+    ":e
 
     let b:shout_cwd = a:shell_cwd
     exe 'silent lcd' a:shell_cwd
@@ -158,21 +162,33 @@ function! OnExit(chan, exit_code, event_type) abort
 
     let winid = bufwinid(s:bufnr)
 
-    if get(g:, "shout_print_exit_code", 1)
-        call appendbufline(s:bufnr, line('$', winid), "")
-        call appendbufline(s:bufnr, line('$', winid), "Exit code: " .. a:exit_code)
+    if a:exit_code == 0 && len(s:alt_filetype) > 0
+        call win_execute(winid, "setl filetype="..s:alt_filetype.." buftype=nofile buflisted")
+        call win_execute(winid, "nnoremap <buffer> <CR> :OpenFile<CR>")
+    else
+        if &filetype != 'shout' | call win_execute(winid, "setl filetype=shout") | endif
+
+        if get(g:, "shout_print_exit_code", 1)
+            call appendbufline(s:bufnr, line('$', winid), "")
+            call appendbufline(s:bufnr, line('$', winid), "Exit code: " .. a:exit_code)
+        endif
+        call setbufvar(s:bufnr, "shout_exit_code", string(a:exit_code))
     endif
 
     if s:follow
         call win_execute(winid, "normal! G")
     endif
 
-    call setbufvar(s:bufnr, "shout_exit_code", string(a:exit_code))
     call win_execute(winid, "setl undolevels&")
 endfunction
 
 " Function to capture shell command output
-function! CaptureOutput(command) abort
+function! CaptureOutput(command, ...) abort
+
+    " Optionaly set file name and filetype
+    let s:bufname = get(a:, 1, '[shout]')
+    let s:alt_filetype = get(a:, 2, '')
+
     let cwd = getcwd()
     let s:bufnr = PrepareBuffer(cwd->substitute('#', '\\&', 'g'))
 
@@ -222,7 +238,7 @@ function! OpenFile()
         let cmd = getline(".")->matchstr('^\$ \zs.*$')
         if cmd !~ '^\s*$'
             let pos = getcurpos()
-            call CaptureOutput(cmd)
+            call CaptureOutput(cmd, s:bufname, s:alt_filetype)
             call setpos('.', pos)
         endif
         return
@@ -315,7 +331,7 @@ endfunction
 function! OpenWindow()
     let bufnr = GetShoutBufnr()
     if bufnr < 0
-        let bufnr = bufadd(s:BUFNAME)
+        let bufnr = bufadd(s:bufname)
     endif
 
     let windows = win_findbuf(bufnr)

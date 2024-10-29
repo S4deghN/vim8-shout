@@ -13,16 +13,16 @@ setlocal noswapfile
 setlocal noundofile
 setlocal signcolumn=yes
 let b:shout_exit_code = 0
-setlocal stl=[shout]\ -\ %(%{%expand(t:shout_cmd)%}%)\ -\ %(%{%expand(b:shout_exit_code)%}%)%=\ \ \ \ %-8(%l,%c%)\ %P
+setlocal stl=%(%{%bufname()%}%):%(%{%expand(b:shout_exit_code)%}%):%(%{%expand(t:shout_cmd)%}%)%=\ \ \ \ %-8(%l,%c%)\ %P
 
-let b:undo_ftplugin = 'setlocal cursorline< cursorlineopt< bufhidden< buftype< buflisted< swapfile< undofile<'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> <CR>"'
+let b:undo_ftplugin = 'setlocal cursorline< cursorlineopt< bufhidden< buftype< buflisted< swapfile< undofile< signcolumn< stl<'
 let b:undo_ftplugin .= '| exe "nunmap <buffer> <C-c>"'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> ]]"'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> [["'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> ]}"'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> [{"'
-let b:undo_ftplugin .= '| exe "nunmap <buffer> gq"'
+
+"let b:undo_ftplugin .= '| exe "nunmap <buffer> <CR>"'
+"let b:undo_ftplugin .= '| exe "nunmap <buffer> ]]"'
+"let b:undo_ftplugin .= '| exe "nunmap <buffer> [["'
+"let b:undo_ftplugin .= '| exe "nunmap <buffer> ]}"'
+"let b:undo_ftplugin .= '| exe "nunmap <buffer> [{"'
 
 nnoremap <buffer> <CR> :OpenFile<CR>
 nnoremap <buffer> <C-c> :Kill<CR><C-c>
@@ -30,4 +30,3 @@ nnoremap <buffer> ]] :NextError<CR>
 nnoremap <buffer> [[ :PrevError<CR>
 nnoremap <buffer> [{ :FirstError<CR>
 nnoremap <buffer> ]} :LastError<CR>
-nnoremap <buffer> gq <C-w>c
